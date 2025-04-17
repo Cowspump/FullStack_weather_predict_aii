@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Погодный совет</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            text-align: center;
+            background-color: #f4f7fb;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            font-size: 2em;
+            margin-bottom: 30px;
+        }
+        #weather {
+            margin-top: 20px;
+            padding: 25px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            min-height: 120px;
+            font-size: 1.2em;
+            line-height: 1.6;
+            color: #333;
+            display: inline-block;
+            width: 90%;
+            text-align: left;
+            position: relative;
+        }
+        #weather.loading:after {
+            content: "";
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 4px;
+            background: #0077ff;
+            border-radius: 2px;
+            animation: loading 1.5s infinite ease-in-out;
+        }
+        @keyframes loading {
+            0%, 100% { width: 30px; }
+            50% { width: 100px; }
+        }
+        button {
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 10px;
+            border: none;
+            background-color: #0077ff;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,119,255,0.3);
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #005acc;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,119,255,0.4);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .weather-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+        .advice-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #ddd;
+        }
+        .location {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Как одеться сегодня? 👕</h1>
+    <button onclick="fetchWeather()" id="weatherBtn">Узнать</button>
+    <div id="weather">Нажмите кнопку, чтобы получить рекомендации по одежде</div>
+
+    <script>
+        const weatherIcons = {
+            sunny: '☀️',
+            cloudy: '☁️',
+            rainy: '🌧️',
+            snowy: '❄️',
+            thunder: '⛈️',
+            default: '🌈'
+        };
+
+        async function fetchWeather() {
+            const weatherDiv = document.getElementById('weather');
+            const weatherBtn = document.getElementById('weatherBtn');
+
+            // Очищаем и показываем состояние загрузки
+            weatherDiv.innerHTML = '';
+            weatherDiv.classList.add('loading');
+            weatherBtn.disabled = true;
+            weatherBtn.textContent = 'Загружаем...';
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/weather');
+                if (!response.ok) {
+                    throw new Error('Ошибка сети');
+                }
+                const data = await response.text();
+
+                // Форматируем текст и добавляем иконку
+                const formattedData = formatWeatherData(data);
+                typeWriter(weatherDiv, formattedData, 0);
+
+            } catch (error) {
+                showError(weatherDiv, 'Не удалось получить данные о погоде. Попробуйте позже.');
+                console.error('Ошибка:', error);
+            } finally {
+                weatherDiv.classList.remove('loading');
+                weatherBtn.disabled = false;
+                weatherBtn.textContent = 'Обновить';
+            }
+        }
+
+        function formatWeatherData(text) {
+            // Определяем иконку по содержанию текста
+            let icon = weatherIcons.default;
+            if (text.includes('дождь')) icon = weatherIcons.rainy;
+            else if (text.includes('солн')) icon = weatherIcons.sunny;
+            else if (text.includes('облач')) icon = weatherIcons.cloudy;
+            else if (text.includes('снег')) icon = weatherIcons.snowy;
+            else if (text.includes('гроз')) icon = weatherIcons.thunder;
+
+            // Форматируем текст
+            const formattedText = text
+                .replace(/\n\n+/g, '</p><p>')  // Двойные переносы - новые абзацы
+                .replace(/\n/g, '<br>')        // Одиночные переносы
+                .replace(/### (.*?)(\n|$)/g, '<strong>$1</strong><br>'); // Форматирование заголовков
+
+            return `<div class="weather-icon">${icon}</div><p>${formattedText}</p>`;
+        }
+
+        function showError(element, message) {
+            element.innerHTML = `<div style="color: #e74c3c;">⚠️ ${message}</div>`;
+        }
+
+        function typeWriter(element, text, i, speed = 20) {
+            if (i < text.length) {
+                element.innerHTML = text.substring(0, i + 1);
+                i++;
+                setTimeout(() => typeWriter(element, text, i, speed), speed);
+            }
+        }
+
+        // Добавляем обработчик для обновления по F5
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F5') {
+                fetchWeather();
+            }
+        });
+    </script>
+</body>
+</html>
